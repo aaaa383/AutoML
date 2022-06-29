@@ -1,29 +1,35 @@
-# NNI‚ğƒCƒ“ƒ|[ƒg‚·‚é
+# NNIã‚’ã‚¤ãƒ³ãƒãƒ¼ãƒˆã™ã‚‹
 import nni
 import pandas as pd
-import xgboost as xgb
+import lightgbm as lgb
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
 
 
 def load_data(train_file_path):
     """
-    ƒf[ƒ^‚Ì‘Oˆ—‚ğs‚¤ŠÖ”
+    ãƒ‡ãƒ¼ã‚¿ã®å‰å‡¦ç†ã‚’è¡Œã†é–¢æ•°
     Parameters
     ----------
     train_file_path : str
-        ŠwK—pƒf[ƒ^‚Ìƒtƒ@ƒCƒ‹ƒpƒX
+        å­¦ç¿’ç”¨ãƒ‡ãƒ¼ã‚¿ã®ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
     Returns
     -------
     X_train : pd.DataFrame
-        ŠwK—p‚Ìƒf[ƒ^
+        å­¦ç¿’ç”¨ã®ãƒ‡ãƒ¼ã‚¿
     y_train : Series
-        ŠwK—p‚Ì³‰ğƒ‰ƒxƒ‹
+        å­¦ç¿’ç”¨ã®æ­£è§£ãƒ©ãƒ™ãƒ«
     """
     train_df = pd.read_csv(train_file_path)
-    y_train = train_df.pop('Survived')
-    X_train = train_df.drop(['PassengerId', 'Name'], axis=1)
-    list_cols = ['Sex', 'Ticket', 'Cabin', 'Embarked']
+    y_train = train_df.pop('Transported') * 1
+    X_train = train_df.drop(['PassengerId', 'Name', 'Destination'], axis=1)
+
+    X_train['CabinDeck'] = X_train['Cabin'].str.split('/', expand=True)[0]
+    X_train['CabinNum']  = X_train['Cabin'].str.split('/', expand=True)[1]
+    X_train['CabinSide'] = X_train['Cabin'].str.split('/', expand=True)[2]
+    X_train.drop(columns = ['Cabin'], inplace = True)
+
+    list_cols = ['CabinDeck', 'CabinNum' ,'CabinSide', 'HomePlanet', 'CryoSleep', 'VIP']
     for col in list_cols:
         le = LabelEncoder()
         le.fit(X_train[col])
@@ -33,11 +39,11 @@ def load_data(train_file_path):
 
 def get_default_parameters():
     """
-    ƒfƒtƒHƒ‹ƒg‚Ìƒpƒ‰ƒ[ƒ^[‚ğæ“¾‚·‚éŠÖ”
+    ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã®ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãƒ¼ã‚’å–å¾—ã™ã‚‹é–¢æ•°
     Returns
     -------
     params : dict
-        ƒfƒtƒHƒ‹ƒg‚Ìƒpƒ‰ƒ[ƒ^[
+        ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã®ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãƒ¼
     """
     params = {
         'learning_rate': 0.02,
@@ -56,17 +62,17 @@ def get_default_parameters():
 
 def get_model(PARAMS):
     """
-    ƒ‚ƒfƒ‹‚ğ“üè‚·‚éŠÖ”
+    ãƒ¢ãƒ‡ãƒ«ã‚’å…¥æ‰‹ã™ã‚‹é–¢æ•°
     Parameters
     ----------
     PARAMS : dict
-        ƒpƒ‰ƒ[ƒ^[
+        ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãƒ¼
     Returns
     -------
     model : xgboost.sklearn.XGBClassifier
-        ŠwK‚Ég—p‚·‚éƒ‚ƒfƒ‹
+        å­¦ç¿’ã«ä½¿ç”¨ã™ã‚‹ãƒ¢ãƒ‡ãƒ«
     """
-    model = xgb.XGBClassifier()
+    model = lgb.LGBMClassifier()
     model.learning_rate = PARAMS.get("learning_rate")
     model.max_depth = PARAMS.get("max_depth")
     model.subsample = PARAMS.get("subsample")
@@ -76,26 +82,26 @@ def get_model(PARAMS):
 
 def run(X_train, y_train, model):
     """
-    ƒ‚ƒfƒ‹‚ğÀs‚·‚éŠÖ”
+    ãƒ¢ãƒ‡ãƒ«ã‚’å®Ÿè¡Œã™ã‚‹é–¢æ•°
     Parameters
     ----------
     X_train : pd.DataFrame
-        ŠwK—p‚Ìƒf[ƒ^
+        å­¦ç¿’ç”¨ã®ãƒ‡ãƒ¼ã‚¿
     y_train : pd.DataFrame
-        ŠwK—p‚Ì³‰ğƒ‰ƒxƒ‹
+        å­¦ç¿’ç”¨ã®æ­£è§£ãƒ©ãƒ™ãƒ«
     model : xgboost.sklearn.XGBClassifier
-        ŠwK‚Ég—p‚·‚éƒ‚ƒfƒ‹
+        å­¦ç¿’ã«ä½¿ç”¨ã™ã‚‹ãƒ¢ãƒ‡ãƒ«
     """
     scores = cross_val_score(model, X_train, y_train,
                              scoring='accuracy', cv=KFold(n_splits=5))
     score = scores.mean()
-    # Configuration‚ÌŒ‹‰Ê‚ğ•ñ‚·‚é
+    # Configurationã®çµæœã‚’å ±å‘Šã™ã‚‹
     nni.report_final_result(score)
 
 
 if __name__ == '__main__':
     X_train_sub, y_train_sub = load_data('train.csv')
-    # Tuner‚©‚çConfiguration‚ğæ“¾‚·‚é
+    # Tunerã‹ã‚‰Configurationã‚’å–å¾—ã™ã‚‹
     RECEIVED_PARAMS = nni.get_next_parameter()
     PARAMS = get_default_parameters()
     PARAMS.update(RECEIVED_PARAMS)

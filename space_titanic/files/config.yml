@@ -17,6 +17,6 @@ tuner:
     optimize_mode: maximize
 
 trial:
-  command: python3 nni_xgb.py
+  command: python3 nni_lgbm.py
   codeDir: .
   gpuNum: 0
